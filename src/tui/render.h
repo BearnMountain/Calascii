@@ -2,30 +2,28 @@
 #define RENDER_H
 
 // ascii escapes
+#include <stdint.h>
 #define CLEAR_LINE "\x1b[K"
 #define CLEAR_SCREEN "\x1b[2J"
+#define HIDE_CURSOR "\x1b[?25l"
 
 // enums for updating screen
 typedef enum {
-	UPDATED_CURSOR,
-	UPDATED_STATUS_BAR
+	UPDATE_CURSOR,
+	UPDATE_STATUS_BAR,
+	UPDATE_TEXT,
 } UpdateType;
 
-struct ScreenBuffer { // one instance holds all the screen tui data
-	char* buffer;
-	int length;
-};
-
-struct ScreenBuffer_t {
+struct ScreenBuffer {
 	char** buffer;
-	int max_length;
-	int max_rows; // easier to refresh a row then the whole buffer
+	uint16_t max_x, max_y;
 };
 
 struct StatusBar {
+	uint8_t active;
 	char* buffer;
-	int buffer_length;
-	int string_length;
+	uint16_t buffer_length; // entire line length
+	uint16_t string_length; // length of the string contents inside of the buffer
 };
 
 extern struct ScreenBuffer screen_buffer;
@@ -39,13 +37,12 @@ int Render_getWindowSize(int* rows, int* cols);
 
 // rendering to terminal
 void Render_updateScreen(UpdateType u);
-void Render_refreshScreen();
-void Render_drawRows();
-
 void Render_updateStatusBar();
+void Render_updateScreenBuffer();
+void Render_updateText();
 
 // setting up screen buffer
-void Render_screenBufferAppend(const char* string, int length);
+// void Render_screenBufferAppend(const char* string, int length);
 void Render_destructor();
 
 // creating the TUI

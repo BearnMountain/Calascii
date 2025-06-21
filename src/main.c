@@ -6,8 +6,8 @@
 #include <stdlib.h>
 
 #include "keybind/keybinds.h"
-#include "gui/render.h"
-#include "gui/terminal.h"
+#include "tui/render.h"
+#include "tui/terminal.h"
 
 /*
 
@@ -26,9 +26,7 @@ int main(void) {
 	Terminal_init();
 	Render_init();
 
-
 	while (1) {
-		Render_refreshScreen();
 		Keybind_processKeypress();
 	}
 

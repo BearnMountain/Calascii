@@ -10,13 +10,14 @@
 #include "terminal.h"
 #include "../../res/config.h"
 
-struct ScreenBuffer screen_buffer = { NULL, 0 };
-struct StatusBar status_bar = { NULL, 0, 0 };
+struct ScreenBuffer screen_buffer = { NULL, 0, 0 };
+struct StatusBar status_bar = { 0, NULL, 0, 0 };
 
 void Render_init() {
 	// init screen_buffer
-	Render_drawRows();
-	Render_screenBufferAppend("\x1b[H", 6); // sets cursor to top right
+	// Render_screenBufferAppend("\x1b[H", 6); // sets cursor to top right
+	write(STDIN_FILENO, "\x1b[2J", 4);
+	write(STDIN_FILENO, "\x1b[H", 3);
 	
 	// init status_bar
 	status_bar.buffer_length = term.screen_cols;
@@ -29,36 +30,37 @@ void Render_init() {
 
 
 // draws all the components
-void Render_refreshScreen() {
-	write(STDOUT_FILENO, "\x1b[2J\x1b[H", 7); // clear screen & 
-	
-	// loads buffer to screen
-	write(STDOUT_FILENO, screen_buffer.buffer, screen_buffer.length);
-	Render_updateStatusBar();
-}
-
 void Render_updateScreen(UpdateType u) {
 
 	switch (u) {
-		case UPDATED_CURSOR: {
+		case UPDATE_CURSOR: {
 			char cursor_buffer[16];
 			snprintf(cursor_buffer, sizeof(cursor_buffer), "\x1b[%d;%dH", term.cursor_y, term.cursor_x);
 			write(STDOUT_FILENO, cursor_buffer, strlen(cursor_buffer));
 			break;
 		}
-		case UPDATED_STATUS_BAR:
+		case UPDATE_STATUS_BAR:
 			Render_updateStatusBar();
+			break;
+		case UPDATE_TEXT:
 			break;
 		default: 
 			break;
 	}
 } 
 
+void Render_updateText() {
+	
+}
+
 void Render_updateStatusBar() {
 	// moves cursor to the bottom of the screen
 	char cursor_buffer[16];
 	snprintf(cursor_buffer, sizeof(cursor_buffer), "\x1b[%d;1H", term.screen_rows + 1);
 	write(STDOUT_FILENO, cursor_buffer, strlen(cursor_buffer));
+
+	// clears line
+	write(STDOUT_FILENO, "\x1b[K", 3);
 	
 	// set background
 	write(STDOUT_FILENO, STATUS_BAR_BACKGROUND_COLOR, strlen(STATUS_BAR_BACKGROUND_COLOR));
@@ -72,16 +74,7 @@ void Render_updateStatusBar() {
 	write(STDOUT_FILENO, cursor_buffer, strlen(cursor_buffer));
 	fsync(STDOUT_FILENO);
 }
-
-void Render_drawRows() {
-	for (int y = 0; y < term.screen_rows; y++) {
-		Render_screenBufferAppend("~", 1);
-		if (y < term.screen_rows - 1) {
-			Render_screenBufferAppend("\r\n", 2);
-		}
-	}
-}
-
+/*
 void Render_screenBufferAppend(const char* string, int length) {
 	char* new_buffer = realloc(screen_buffer.buffer, screen_buffer.length + length);
 
@@ -92,8 +85,18 @@ void Render_screenBufferAppend(const char* string, int length) {
 	screen_buffer.buffer = new_buffer;
 	screen_buffer.length += length;
 }
-
+*/
 void Render_destructor() {
 	free(screen_buffer.buffer); 
 	free(status_bar.buffer);
+}
+
+
+// rendering the interface
+void Render_calendarGrid(int days, int start) {
+
+}
+
+void Render_schedule(char* info, int length) {
+
 }

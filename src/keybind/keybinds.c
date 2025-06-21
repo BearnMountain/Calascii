@@ -2,15 +2,21 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "keybinds.h"
-#include "../gui/terminal.h"
-#include "../gui/render.h"
+#include "../tui/terminal.h"
+#include "../tui/render.h"
 #include "../debug/error.h"
 
 #include "../../res/config.h"
 
 #define CTRL_KEY(k) ((k) & 0x1f)
+
+// defining return values above 7-bit ascii
+#define NEW_LINE 128
+#define TAB 129
+#define SHIFT 130
 
 char Keybind_readKey() {
 	int input;
@@ -25,8 +31,9 @@ char Keybind_readKey() {
 	if (c == '\x1b') {
 		char sequence[3];
 
-		if (read(STDIN_FILENO, &sequence[0], 1) != 1 && read(STDIN_FILENO, &sequence[0], 1) != 1) return '\x1b';
+		if (read(STDIN_FILENO, &sequence[0], 1) != 1 && read(STDIN_FILENO, &sequence[1], 1) != 1) return '\x1b';
 
+		// arrow keys
 		if (sequence[0] == '[') {
 			switch (sequence[1]) {
 				case 'A': return MOVE_UP;
@@ -45,13 +52,8 @@ char Keybind_readKey() {
 void Keybind_processKeypress() {
 	char c = Keybind_readKey();
 
-	if (c > 31 && c < 127) {
-		status_bar.buffer[status_bar.string_length] = c;
-		status_bar.string_length++;
-	} else if (c == 127 && status_bar.string_length > 0) {
-		status_bar.buffer[status_bar.string_length - 1] = ' ';
-		status_bar.string_length--;
-	}
+	// status_bar always intercepts keys
+	Keybind_updateStatusBar(c);
 	
 	switch (c) {
 		case CTRL_KEY('q'):
@@ -73,10 +75,54 @@ void Keybind_processKeypress() {
 		case MOVE_DOWN:
 		case MOVE_RIGHT:
 			Keybind_moveCursor(c);
+			
 			break;
 		default:
+			Render_updateScreen(UPDATE_TEXT);
 			break;
 	}
+}
+
+void Keybind_updateStatusBar(char key) {
+
+	if (status_bar.active != 1) {
+		if (key == ':') {
+			status_bar.active = 1;
+			status_bar.buffer[status_bar.string_length] = key;
+			status_bar.string_length++;
+			Render_updateScreen(UPDATE_STATUS_BAR);
+		}
+		return;
+	} 
+
+	// adds characters
+	if (key > 31 && key < 127) {
+		status_bar.buffer[status_bar.string_length] = key;
+		status_bar.string_length++;
+	} else if (key == 127 && status_bar.string_length > 0) {
+		status_bar.buffer[status_bar.string_length - 1] = ' ';
+		status_bar.string_length--;
+	}
+
+
+	// sets
+	if (key == '\n' || key == '\r') {
+		// executing the buffer commands
+
+
+		status_bar.active = 0;
+		for (uint16_t i = 0; i < status_bar.string_length; i++) 
+			status_bar.buffer[i] = ' ';
+		status_bar.string_length = 0;
+	}
+	// escapes
+	if (key == '\x1b') {
+		status_bar.active = 0;
+		for (uint16_t i = 0; i < status_bar.string_length; i++) 
+			status_bar.buffer[i] = ' ';
+		status_bar.string_length = 0;
+	}
+	Render_updateScreen(UPDATE_STATUS_BAR);
 }
 
 void Keybind_moveCursor(char key) {
@@ -101,5 +147,5 @@ void Keybind_moveCursor(char key) {
 			break;
 	}
 
-	Render_updateScreen(UPDATED_CURSOR);
+	Render_updateScreen(UPDATE_CURSOR);
 }
